@@ -100,10 +100,15 @@ Object should have (lock _) and (waitqueue _)"
 
 
 (defmethod reset-queue ((q execution-queue))
-  (with-execution-queue q
-    (setf idle-count 0
-          process-count 0
-          process-table nil)))
+  (let ((old-queue 
+         (with-execution-queue q
+           (setf idle-count 0
+                 process-count 0
+                 process-table nil)
+           (iter (while (not (emptyqp queue)))
+                 (collect (deqf queue))))))
+    (iter (for x in old-queue)
+          (enqueue q x))))
 
 
 (defmethod next-process-name ((q execution-queue))
@@ -112,38 +117,38 @@ Object should have (lock _) and (waitqueue _)"
 
 
 (defun eq-main (q obj entry)
-  (with-execution-queue q
-    (let* ((process (current-process)))
-      (setf (car entry) process)
-      (loop
-        (labels 
-          ((exit ()
-             (decf process-count)
-             (deletef entry process-table)
-             (return))
-           (set-status (status &optional obj)
-             (let ((x (cdr entry)))
-               (setf (car x) status)
-               (setf (cdr x) obj)))
-           (idle ()
-             (incf idle-count)
-             (set-status :idle)
-             (do () ((not (emptyqp queue)))
-               (synch-locked-wait q))
-             (decf idle-count))
-           (broken (condition)
+  (let ((process (current-process)))
+    (setf (car entry) process)
+    (loop
+       (labels ((set-status (status &optional obj)
+                  (let ((x (cdr entry)))
+                    (setf (car x) status)
+                    (setf (cdr x) obj))))
+         (set-status :working obj)
+         (handler-case (funcall (executor q) obj)
+           (serious-condition (condition)
              (warn "Thread fails: ~A thr ~A" condition (current-process))
-             (with-synchronization q (exit))))
-          (set-status :working obj)
-          (handler-case (funcall executor obj)
-            (serious-condition (condition) (broken condition)))
-          (with-synchronization q
-            (when (and (emptyqp queue)
-                       (or (null max-idle) (< idle-count max-idle)))
-              (idle))
-            (if (emptyqp queue) 
-              (exit)
-              (setq obj (deqf queue)))))))))
+             (set-status :broken condition)))
+         (with-synchronization q
+           (with-execution-queue q
+             (flet ((exit ()            ; Terminate process
+                      (decf process-count)
+                      (deletef entry process-table)
+                      (return)))
+               (cond ((eq (cadr entry) :broken)
+                      (exit))
+                     ((< idle-count 0)
+                      (incf idle-count)
+                      (setq obj (deqf queue)))
+                     ((or (null max-idle) (< idle-count max-idle))
+                      (incf idle-count)
+                      (set-status :idle)
+                      (do () ((not (emptyqp queue)))
+                        (synch-locked-wait q))
+                      (setq obj (deqf queue)))
+                     (t
+                      (exit))))))))))
+
 
 
 
@@ -160,15 +165,17 @@ Object should have (lock _) and (waitqueue _)"
       (flet ((ok-make-more-processes ()
                (or (< process-count max-processes)
                    (if max-handler
-                     (funcall max-handler q obj)))))
-        (cond ((and (zerop idle-count) (ok-make-more-processes))
+                       (funcall max-handler q obj)))))
+        (cond ((and (<= idle-count 0) (ok-make-more-processes))
                (incf process-count)
                (let ((entry (list nil nil)))
                  (push entry process-table)
                  (start-process (next-process-name q) #'eq-main q obj entry)))
               (t 
+               (when (> idle-count 0)
+                 (synch-notify q))
                (enqf queue obj)
-               (synch-notify q)
+               (decf idle-count)
                nil))))))
 
 
