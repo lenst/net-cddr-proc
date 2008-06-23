@@ -15,7 +15,9 @@
    ;; Shared Queue
    #:shared-queue
    ;; Execution Queue
-   #:execution-queue #:reset-queue #:garb-threads )
+   #:execution-queue #:reset-queue #:garb-threads
+   ;; Count Down Latch
+   #:count-down-latch #:count-down #:await-latch)
 
   (:import-from
    "NET.CDDR.LIB"
