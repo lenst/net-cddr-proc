@@ -17,7 +17,9 @@
    ;; Execution Queue
    #:execution-queue #:reset-queue #:garb-threads
    ;; Count Down Latch
-   #:count-down-latch #:count-down #:await-latch)
+   #:count-down-latch #:count-down #:await-latch
+   ;; Cyclic Barrier
+   #:cyclic-barrier)
 
   (:import-from
    "NET.CDDR.LIB"

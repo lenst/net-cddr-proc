@@ -4,5 +4,5 @@
 
 (packer:declare-package
  :package "NET.CDDR.PROC"
- :modules '((nil "package" "sysdep" "mt-queue"  "count-down-latch")))
+ :modules '((nil "package" "sysdep" "mt-queue"  "count-down-latch" "cyclic-barrier")))
 
