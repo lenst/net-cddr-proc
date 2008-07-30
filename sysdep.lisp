@@ -3,11 +3,11 @@
 ;;;; Macros
 
 (defmacro %sysdep (desc &rest forms)
-  (when (null forms)
-      (error "No system dependent code to ~A" desc))
-  (car forms))
-
-
+  (cond ((null forms)
+         (warn "No system dependent code to ~A" desc)
+         `(error "No system dependent code to ~A" ,desc))
+        (t
+         (car forms))))
 
 
 
@@ -32,7 +32,7 @@
    #+sb-thread
    (sb-thread:make-thread (lambda () (apply proc args)) :name options)
    #+acl-compat
-   (apply #'acl-compat.mp:process-run-function name func args)
+   (apply #'acl-compat.mp:process-run-function options func args)
    ;; Default: just do it
    (progn (apply proc args)
           nil)))
@@ -87,7 +87,6 @@
    `(progn ,@body)))
 
 
-
 #+Digitool
 (defclass mcl-waitqueue ()
   ((notify   :initform nil  :accessor mcl-notify)))
@@ -98,8 +97,7 @@
    "Make a condition variable"
    #+sb-thread (sb-thread:make-waitqueue)
    #+openmcl (ccl::make-semaphore)
-   #+digitool (make-instance 'mcl-waitqueue)
-   nil))
+   #+digitool (make-instance 'mcl-waitqueue)))
 
 
 (defun wq-locked-wait (wq lock)
@@ -117,20 +115,17 @@
                 (ccl:process-unlock lock)
                 (unwind-protect
                   (ccl:process-wait "wq-wait" #'mcl-notify wq)
-                  (ccl:process-lock lock)))
-   ;; default
-   (progn wq lock)))
+                  (ccl:process-lock lock)))))
 
 
 (defun wq-notify (wq)
   "Notify waitqueue, wake at least one process waiting on the waitqueue.
-Should me called with corresponding lock held."
+Should be called with corresponding lock held."
   (%SYSDEP
    "wq-notify"
    #+sb-thread (sb-thread:condition-notify wq)
    #+openmcl (ccl:signal-semaphore wq)
-   #+digitool (setf (mcl-notify wq) t)
-   nil))
+   #+digitool (setf (mcl-notify wq) t)))
 
 
 
