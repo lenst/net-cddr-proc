@@ -1,0 +1,33 @@
+mt-queue invariant
+
+* Parameters
+
+| idle-count | slot                  |
+| #idle      | processes marked idle |
+| #q         | jobs queued           |
+|            |                       |
+
+* Constraints
+
+| idle-count : integer |
+| #idle >= 0           |
+| #idle >= idle-count  |
+| #q >=0               |
+
+* Invariant
+
+| Invariant                 |
+|---------------------------|
+| idle-count = #idle - #q   |
+
+| Condition      |            |
+|----------------+------------|
+| idle-count > 0 | #idle > #q |
+| idle-count = 0 | #idle = #q |
+| idle-count < 0 | #idle < #q |
+
+Also whenever a job is queued and ther is more idle processes than
+entries in the queue do a notify. (i.e. idle-count > 0)
+
+
+
