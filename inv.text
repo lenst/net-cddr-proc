@@ -26,7 +26,7 @@ mt-queue invariant
 | idle-count = 0 | #idle = #q |
 | idle-count < 0 | #idle < #q |
 
-Also whenever a job is queued and ther is more idle processes than
+Also whenever a job is queued and there is more idle processes than
 entries in the queue do a notify. (i.e. idle-count > 0)
 
 
