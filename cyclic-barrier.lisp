@@ -24,7 +24,8 @@
            (iter (repeat (1- (count-of barrier)))
                  (synch-notify barrier)))
           (t
-           (synch-locked-wait barrier)))))
+           (do () ((zerop (ready-of barrier)))
+               (synch-locked-wait barrier))))))
 
 
 (deftest cyclic-barrier ()
