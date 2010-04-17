@@ -118,6 +118,21 @@
                   (ccl:process-lock lock)))))
 
 
+(defun wq-locked-wait-on-condition (wq lock func &rest args)
+  #-(or openmcl sb-thread digitool)
+  (declare (ignore wq lock))
+  (%SYSDEP
+   "Wait for (func args) to be true, check when obj is notified"
+
+   #+(or openmcl sb-thread digitool)
+   (loop until (apply func args)
+        do (wq-locked-wait wq lock))
+   
+   ;; Default
+   (loop until (apply func args)
+        do (sleep 0.01))))
+
+
 (defun wq-notify (wq)
   "Notify waitqueue, wake at least one process waiting on the waitqueue.
 Should be called with corresponding lock held."
